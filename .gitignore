@@ -1,0 +1,30 @@
+# Ignorar entorno virtual
+venv/
+ENV/
+env/
+
+# Archivos de Python compilados
+__pycache__/
+*.py[cod]
+*.so
+
+# Archivos de entorno y configuración local
+*.env
+*.DS_Store
+*.log
+*.sqlite3
+
+# Archivos de Jupyter Notebook
+*.ipynb
+
+# Carpeta del informe (no se sube)
+INFORME/
+
+# Archivos del sistema o IDEs
+.vscode/
+.idea/
+*.swp
+
+# Archivos temporales
+*.bak
+*.tmp
