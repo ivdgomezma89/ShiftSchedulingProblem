@@ -179,6 +179,13 @@ class DeskAssignmentVisualization:
         if "resultados_corridas" not in st.session_state:
             st.session_state.resultados_corridas = {}
 
+        if "start_time" not in st.session_state:
+            st.session_state.start_time = None
+
+        if "end_time" not in st.session_state:
+            st.session_state.end_time = None
+                        
+
         self.dias_presencialidad=2
 
         self.instance_reader = InstanceReader()
@@ -349,7 +356,8 @@ class DeskAssignmentVisualization:
             dia_reuniones=[]
             for group_name, employees_in_group in self.employees_g.items():
                 att_max=0
-                day_max=0                   
+                day_max=0   
+                max_conteo=0                
                 for day_idx in range(len(self.days)):
                     conteo=0
                     emp_indices = [self.employees_reverse_map[emp] for emp in employees_in_group]
@@ -360,7 +368,8 @@ class DeskAssignmentVisualization:
                     if attendace_g> att_max:
                         att_max= attendace_g
                         day_max= day_idx
-                dia_reuniones.append({'Grupo': group_name, 'Dia': self.days_map[day_max], '% asistencia': f"{att_max*100:.0f}%"})
+                        max_conteo=conteo
+                dia_reuniones.append({'Grupo': group_name, 'Dia': self.days_map[day_max], '% asistencia': f"{max_conteo}/{len(emp_indices)} ({int(att_max*100)}%)"})
             return dia_reuniones               
 
         else:
@@ -607,8 +616,9 @@ class DeskAssignmentVisualization:
                             st.session_state.nro_zonas = len(instance["Zones"])    
                             ejecutar_btn = st.button(" ▶️ Ejecutar")                        
                     elif instancia_seleccion == "Cargar instancia nueva":
-                        uploaded_file = st.file_uploader("Cargar archivo JSON", type="json")
+                        uploaded_file = st.file_uploader("Cargar archivo JSON", type="json")                        
                         if uploaded_file is not None:
+                            selected_instance = uploaded_file.name
                             # Leer una instancia
                             instance = self.instance_reader.read_instance(uploaded_file)  
                             if isinstance(instance, str):
@@ -742,8 +752,8 @@ class DeskAssignmentVisualization:
                                             text = f"⚡ {solver_id}: {current_iter}/{total_iterations} ({int(progress*100)}%)"
                                         else:
                                             text = f"🔄 {solver_id}: En proceso DRL..."
-                                        progress_bar.progress(progress, text=text)    
-                                                
+                                        progress_bar.progress(progress, text=text)  
+                                               
 
                                 
                                 thread.join()
@@ -755,19 +765,22 @@ class DeskAssignmentVisualization:
                                     start_time = results["start_time"]
                                     end_time = results["end_time"]
                                     minutes, seconds = divmod(end_time - start_time, 60)
+                                    st.session_state.start_time = start_time
+                                    st.session_state.end_time = end_time
                                     status_container.success(f"El algoritmo se ha ejecutado correctamente en {minutes:.0f} minutos y {seconds:.0f} segundos.", icon="✅")
                                     results_dict={}                                
                                     results_dict[selected_instance] = {"best_score": st.session_state.best_score, 
-                                                                                            "best_schedule": st.session_state.best_schedule, 
-                                                                                            "start_time": start_time, 
-                                                                                            "end_time": end_time
-                                                                                            }
+                                                                        "best_schedule": st.session_state.best_schedule, 
+                                                                        "start_time": start_time, 
+                                                                        "end_time": end_time
+                                                                        }
                                     
-                                    self.save_results(results_dict)
+                                    #self.save_results(results_dict)
                                 else:
                                     status_container.error("Optimización no completada. Por favor, vuelva a intentarlo.", icon="⚠️")
                                     st.session_state.best_score = None
                                     st.session_state.best_schedule = None
+                
                 elif ver_resultados:
 
                     load_results = self.load_results(selected_instance)
@@ -778,7 +791,11 @@ class DeskAssignmentVisualization:
                         st.session_state.instancia_programada = st.session_state.instancia_cargada
                         st.session_state.best_score = load_results['best_score']
                         st.session_state.best_schedule = load_results['best_schedule']
-                        st.success("Resultados cargados correctamente. Puede visualizarlos en las pestañas Resultados Generales y Detalles de la Asignación.", icon="✅")
+                        st.session_state.start_time = load_results['start_time']
+                        st.session_state.end_time = load_results['end_time']
+                        st.success("Resultados cargados correctamente. \n \n Puede visualizarlos en las pestañas Resultados Generales y Detalles de la asignación.", icon="✅")
+                                    
+
 
                
             with col2: 
@@ -837,7 +854,6 @@ class DeskAssignmentVisualization:
                     st.warning("No se ha ejecutado el algoritmo.")
 
             with col2:
-
                 
                 st.markdown("## 📊 Métricas de la solución")
                 col1, col2 = st.columns(2)
@@ -863,6 +879,17 @@ class DeskAssignmentVisualization:
                             help="El porcentaje de dias preferidos por los empleados que se asignaron",
                             border=True
                         )
+                        minutes, seconds = divmod(st.session_state.end_time - st.session_state.start_time, 60)
+                        st.metric(
+                            "⏳ Tiempo de ejecución",
+                            f"{{minutes:.0f}} min y {{seconds:.0f}} seg".format(minutes=minutes, seconds=seconds),
+                            help="Tiempo de ejecución del algoritmo",
+                            border=True
+                        )
+
+                     
+
+
 
                     
                     with col2:
